@@ -76,7 +76,7 @@
     <form id="videoForm">
       <input type="hidden" id="editIndex">
       <input type="text" id="title" placeholder="影片標題" required>
-      <input type="file" id="fileInput" accept="video/*">
+      <input type="text" id="url" placeholder="影片URL（可貼GitHub影片連結）" required>
       <textarea id="text" placeholder="文字內容" rows="6" required></textarea>
       <button type="submit">儲存</button>
       <button type="button" onclick="resetForm()">清空</button>
@@ -87,16 +87,10 @@
 </div>
 
 <script>
-  // 讀取 localStorage
   let videos = JSON.parse(localStorage.getItem("videos") || "[]");
 
   function saveVideos(){
-    try {
-      localStorage.setItem("videos", JSON.stringify(videos));
-    } catch(e){
-      alert("影片或資料太大，無法存入localStorage!");
-      return;
-    }
+    localStorage.setItem("videos", JSON.stringify(videos));
     renderList();
     renderAdminList();
   }
@@ -110,7 +104,6 @@
     if(page==="admin") renderAdminList();
   }
 
-  // 列表頁
   function renderList(){
     const list = document.getElementById("videoList");
     list.innerHTML="";
@@ -126,7 +119,6 @@
     });
   }
 
-  // 詳細頁
   function showDetail(index){
     const v = videos[index];
     document.getElementById("detail-video").src = v.url;
@@ -134,45 +126,20 @@
     showPage("detail");
   }
 
-  // 管理頁上傳
+  // 管理頁
   document.getElementById("videoForm").addEventListener("submit", e=>{
     e.preventDefault();
-    const title=document.getElementById("title").value;
-    const text=document.getElementById("text").value;
-    const idx=document.getElementById("editIndex").value;
-    const file=document.getElementById("fileInput").files[0];
+    const title = document.getElementById("title").value;
+    const url = document.getElementById("url").value;
+    const text = document.getElementById("text").value;
+    const idx = document.getElementById("editIndex").value;
 
-    if(!file && idx===""){
-      alert("請選擇影片！");
-      return;
-    }
+    if(idx==="") videos.push({title,url,text});
+    else videos[idx] = {title,url,text};
 
-    if(file){
-      if(file.size > 10*1024*1024){
-        alert("影片過大，請選擇小於10MB的影片");
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = function(evt){
-        const url = evt.target.result;
-        saveData(title,url,text,idx);
-      };
-      reader.readAsDataURL(file);
-    }else{
-      const oldUrl = videos[idx].url;
-      saveData(title,oldUrl,text,idx);
-    }
-  });
-
-  function saveData(title,url,text,idx){
-    if(idx===""){
-      videos.push({title,url,text});
-    }else{
-      videos[idx]={title,url,text};
-    }
     saveVideos();
     resetForm();
-  }
+  });
 
   function renderAdminList(){
     const list=document.getElementById("adminList");
@@ -191,9 +158,10 @@
 
   function editVideo(index){
     const v=videos[index];
-    document.getElementById("title").value=v.title;
-    document.getElementById("text").value=v.text;
-    document.getElementById("editIndex").value=index;
+    document.getElementById("title").value = v.title;
+    document.getElementById("url").value = v.url;
+    document.getElementById("text").value = v.text;
+    document.getElementById("editIndex").value = index;
     showPage("admin");
   }
 
@@ -216,8 +184,8 @@
   }
 
   function login(){
-    const user=document.getElementById("loginUser").value;
-    const pass=document.getElementById("loginPass").value;
+    const user = document.getElementById("loginUser").value;
+    const pass = document.getElementById("loginPass").value;
     if(user==="cztt0822" && pass==="0000"){
       sessionStorage.setItem("loggedIn","true");
       showPage("admin");
