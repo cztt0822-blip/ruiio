@@ -33,8 +33,12 @@
   #login-page input { width:100%; padding:8px; margin-bottom:10px; font-size:16px; }
   #login-page button { padding:8px 12px; font-size:16px; }
 </style>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 </head>
 <body>
+
 <header>
   <nav>
     <a onclick="showPage('list')">衣櫃</a>
@@ -76,7 +80,7 @@
     <form id="videoForm">
       <input type="hidden" id="editIndex">
       <input type="text" id="title" placeholder="影片標題" required>
-      <input type="text" id="url" placeholder="影片 URL (例如 Google Drive 或 YouTube)" required>
+      <input type="file" id="fileInput" accept="video/*">
       <textarea id="text" placeholder="文字內容" rows="4" required></textarea>
       <button type="submit">儲存</button>
       <button type="button" onclick="resetForm()">清空</button>
@@ -87,142 +91,175 @@
 </div>
 
 <script>
-let videos = JSON.parse(localStorage.getItem("videos") || "[]");
-
-function saveVideos(){
-  localStorage.setItem("videos", JSON.stringify(videos));
-  renderList();
-  renderAdminList();
-}
-
-function showPage(page){
-  ["list","detail","login","admin"].forEach(p => {
-    document.getElementById(p+"-page").style.display="none";
-  });
-  document.getElementById(page+"-page").style.display="block";
-  if(page==="list") renderList();
-  if(page==="admin") renderAdminList();
-}
-
-// 列表頁
-function renderList(){
-  const list = document.getElementById("videoList");
-  list.innerHTML="";
-  videos.forEach((v,i)=>{
-    const item=document.createElement("div");
-    item.className="video-item";
-    item.innerHTML=`
-      <video src="${v.url}" muted></video>
-      <h3>${v.title}</h3>
-    `;
-    item.onclick = ()=>showDetail(i);
-    list.appendChild(item);
-  });
-}
-
-// 詳細頁
-function showDetail(index){
-  const v = videos[index];
-  document.getElementById("detail-title").innerText = v.title;
-  document.getElementById("detail-video").src = v.url;
-  const textBox = document.getElementById("detail-text");
-  textBox.innerHTML = v.text.replace(/\n/g,"<br>");
-  textBox.classList.remove("expanded");
-  const toggleBtn = document.getElementById("toggleText");
-  if(v.text.split("\n").length>3){
-    toggleBtn.style.display="inline-block";
-    toggleBtn.innerText="顯示更多";
-  }else{
-    toggleBtn.style.display="none";
-  }
-  toggleBtn.onclick = ()=>{
-    textBox.classList.toggle("expanded");
-    toggleBtn.innerText = textBox.classList.contains("expanded")?"收起":"顯示更多";
+  // Firebase 初始化
+  const firebaseConfig = {
+    apiKey: "你的apiKey",
+    authDomain: "你的projectId.firebaseapp.com",
+    projectId: "你的projectId",
+    storageBucket: "你的projectId.appspot.com",
+    messagingSenderId: "xxxx",
+    appId: "xxxx"
   };
-  showPage("detail");
-}
+  firebase.initializeApp(firebaseConfig);
+  const storage = firebase.storage();
 
-// 管理頁
-document.getElementById("videoForm").addEventListener("submit", e=>{
-  e.preventDefault();
-  const title = document.getElementById("title").value;
-  const url = document.getElementById("url").value;
-  const text = document.getElementById("text").value;
-  const idx = document.getElementById("editIndex").value;
+  let videos = JSON.parse(localStorage.getItem("videos") || "[]");
 
-  saveData(title,url,text,idx);
-});
-
-function saveData(title,url,text,idx){
-  if(idx===""){
-    videos.push({title,url,text});
-  }else{
-    videos[idx]={title,url,text};
+  function saveVideos(){
+    localStorage.setItem("videos", JSON.stringify(videos));
+    renderList();
+    renderAdminList();
   }
-  saveVideos();
-  resetForm();
-}
 
-function renderAdminList(){
-  const list = document.getElementById("adminList");
-  list.innerHTML="";
-  videos.forEach((v,i)=>{
-    const div=document.createElement("div");
-    div.className="admin-item";
-    div.innerHTML=`
-      <strong>${v.title}</strong><br>
-      <button onclick="editVideo(${i})">編輯</button>
-      <button onclick="deleteVideo(${i})">刪除</button>
-    `;
-    list.appendChild(div);
+  function showPage(page){
+    ["list","detail","login","admin"].forEach(p=>{
+      document.getElementById(p+"-page").style.display="none";
+    });
+    document.getElementById(page+"-page").style.display="block";
+    if(page==="list") renderList();
+    if(page==="admin") renderAdminList();
+  }
+
+  // 列表頁
+  function renderList(){
+    const list = document.getElementById("videoList");
+    list.innerHTML="";
+    videos.forEach((v,i)=>{
+      const item=document.createElement("div");
+      item.className="video-item";
+      item.innerHTML=`
+        <video src="${v.url}" muted></video>
+        <h3>${v.title}</h3>
+      `;
+      item.onclick = ()=>showDetail(i);
+      list.appendChild(item);
+    });
+  }
+
+  // 詳細頁
+  function showDetail(index){
+    const v = videos[index];
+    document.getElementById("detail-title").innerText=v.title;
+    document.getElementById("detail-video").src=v.url;
+    const textBox=document.getElementById("detail-text");
+    textBox.innerHTML=v.text.replace(/\n/g,"<br>");
+    textBox.classList.remove("expanded");
+    const toggleBtn=document.getElementById("toggleText");
+    if(v.text.split("\n").length>3){
+      toggleBtn.style.display="inline-block";
+      toggleBtn.innerText="顯示更多";
+    }else{
+      toggleBtn.style.display="none";
+    }
+    toggleBtn.onclick=()=>{
+      textBox.classList.toggle("expanded");
+      toggleBtn.innerText=textBox.classList.contains("expanded")?"收起":"顯示更多";
+    };
+    showPage("detail");
+  }
+
+  // 管理頁上傳
+  document.getElementById("videoForm").addEventListener("submit", e=>{
+    e.preventDefault();
+    const title=document.getElementById("title").value;
+    const text=document.getElementById("text").value;
+    const idx=document.getElementById("editIndex").value;
+    const file=document.getElementById("fileInput").files[0];
+
+    if(!file && idx===""){
+      alert("請選擇影片！");
+      return;
+    }
+
+    if(file){
+      const storageRef = storage.ref('videos/'+file.name);
+      const uploadTask = storageRef.put(file);
+
+      uploadTask.on('state_changed',
+        snapshot => {}, // 可顯示上傳進度
+        error => { alert("上傳失敗:"+error); },
+        () => {
+          uploadTask.snapshot.ref.getDownloadURL().then(url=>{
+            saveData(title,url,text,idx);
+          });
+        }
+      );
+    }else{
+      const oldUrl = videos[idx].url;
+      saveData(title,oldUrl,text,idx);
+    }
   });
-}
 
-function editVideo(index){
-  const v=videos[index];
-  document.getElementById("title").value=v.title;
-  document.getElementById("url").value=v.url;
-  document.getElementById("text").value=v.text;
-  document.getElementById("editIndex").value=index;
-  showPage("admin");
-}
-
-function deleteVideo(index){
-  if(confirm("確定要刪除嗎？")){
-    videos.splice(index,1);
+  function saveData(title,url,text,idx){
+    if(idx===""){
+      videos.push({title,url,text});
+    }else{
+      videos[idx]={title,url,text};
+    }
     saveVideos();
+    resetForm();
   }
-}
 
-function resetForm(){
-  document.getElementById("videoForm").reset();
-  document.getElementById("editIndex").value="";
-}
+  function renderAdminList(){
+    const list=document.getElementById("adminList");
+    list.innerHTML="";
+    videos.forEach((v,i)=>{
+      const div=document.createElement("div");
+      div.className="admin-item";
+      div.innerHTML=`
+        <strong>${v.title}</strong><br>
+        <button onclick="editVideo(${i})">編輯</button>
+        <button onclick="deleteVideo(${i})">刪除</button>
+      `;
+      list.appendChild(div);
+    });
+  }
 
-// 登入
-function goAdmin(){
-  if(sessionStorage.getItem("loggedIn")==="true") showPage("admin");
-  else showPage("login");
-}
-
-function login(){
-  const user=document.getElementById("loginUser").value;
-  const pass=document.getElementById("loginPass").value;
-  if(user==="cztt0822" && pass==="0000"){
-    sessionStorage.setItem("loggedIn","true");
+  function editVideo(index){
+    const v=videos[index];
+    document.getElementById("title").value=v.title;
+    document.getElementById("text").value=v.text;
+    document.getElementById("editIndex").value=index;
     showPage("admin");
-  }else{
-    alert("帳號或密碼錯誤");
   }
-}
 
-function logout(){
-  sessionStorage.removeItem("loggedIn");
+  function deleteVideo(index){
+    if(confirm("確定要刪除嗎？")){
+      videos.splice(index,1);
+      saveVideos();
+    }
+  }
+
+  function resetForm(){
+    document.getElementById("videoForm").reset();
+    document.getElementById("editIndex").value="";
+  }
+
+  // 登入
+  function goAdmin(){
+    if(sessionStorage.getItem("loggedIn")==="true") showPage("admin");
+    else showPage("login");
+  }
+
+  function login(){
+    const user=document.getElementById("loginUser").value;
+    const pass=document.getElementById("loginPass").value;
+    if(user==="cztt0822" && pass==="0000"){
+      sessionStorage.setItem("loggedIn","true");
+      showPage("admin");
+    }else{
+      alert("帳號或密碼錯誤");
+    }
+  }
+
+  function logout(){
+    sessionStorage.removeItem("loggedIn");
+    showPage("list");
+  }
+
+  // 預設
   showPage("list");
-}
-
-// 預設
-showPage("list");
 </script>
+
 </body>
 </html>
