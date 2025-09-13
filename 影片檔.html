@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<title>影片網站 Firebase 版</title>
+<title>影片網站 Firebase 進階上傳版</title>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
@@ -26,6 +26,7 @@ form button { padding:8px 12px; margin-right:10px; cursor:pointer; font-size:16p
 #login-page { display:none; }
 #login-page input { width:100%; padding:8px; margin-bottom:10px; font-size:16px; }
 #login-page button { padding:8px 12px; font-size:16px; }
+#uploadProgress { width:100%; height:20px; display:none; margin-bottom:10px; }
 </style>
 </head>
 <body>
@@ -72,6 +73,7 @@ form button { padding:8px 12px; margin-right:10px; cursor:pointer; font-size:16p
 <input type="hidden" id="editIndex">
 <input type="text" id="title" placeholder="影片標題" required>
 <input type="file" id="fileUpload" accept="video/*" capture="environment">
+<progress id="uploadProgress" value="0" max="100"></progress>
 <textarea id="text" placeholder="文字內容" rows="6" required></textarea>
 <button type="submit">儲存</button>
 <button type="button" onclick="resetForm()">清空</button>
@@ -147,26 +149,51 @@ const title = document.getElementById("title").value;
 const text = document.getElementById("text").value;
 const idx = document.getElementById("editIndex").value;
 const file = document.getElementById("fileUpload").files[0];
+const progress = document.getElementById("uploadProgress");
 
-let url = "";
-if(file){
-const storageRef = storage.ref().child("videos/"+Date.now()+"_"+file.name);
-const snapshot = await storageRef.put(file);
-url = await snapshot.ref.getDownloadURL();
-}else if(idx!==""){
-url = videos[idx].url;
-}else{
-alert("請選影片"); return;
+if(!file && idx===""){
+alert("請選影片");
+return;
 }
 
+let url="";
+if(file){
+const storageRef = storage.ref().child("videos/"+Date.now()+"_"+file.name);
+const uploadTask = storageRef.put(file);
+
+progress.style.display="block";
+
+uploadTask.on('state_changed',
+(snapshot)=>{
+const percent = (snapshot.bytesTransferred/snapshot.totalBytes)*100;
+progress.value = percent;
+},
+(error)=>{
+alert("上傳失敗: "+error.message);
+},
+async ()=>{
+url = await uploadTask.snapshot.ref.getDownloadURL();
+await saveVideoFirestore(title,text,url,idx);
+progress.style.display="none";
+resetForm();
+loadVideos(true);
+}
+);
+}else{
+url = videos[idx].url;
+await saveVideoFirestore(title,text,url,idx);
+resetForm();
+loadVideos(true);
+}
+});
+
+async function saveVideoFirestore(title,text,url,idx){
 if(idx===""){
 await db.collection("videos").add({title,text,url,timestamp:Date.now()});
 }else{
 await db.collection("videos").doc(videos[idx].id).update({title,text,url});
 }
-resetForm();
-loadVideos(true);
-});
+}
 
 // ====== 管理列表 ======
 function renderAdminList(){
@@ -202,6 +229,7 @@ loadVideos(true);
 function resetForm(){
 document.getElementById("videoForm").reset();
 document.getElementById("editIndex").value="";
+document.getElementById("uploadProgress").style.display="none";
 }
 
 // ====== 登入登出 ======
