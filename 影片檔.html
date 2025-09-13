@@ -6,21 +6,20 @@
 <style>
   body { font-family: Arial, sans-serif; margin:0; padding:0; }
   header { background:#333; color:white; padding:10px 20px; }
-  nav a { color:white; margin-right:15px; text-decoration:none; cursor:pointer; }
-  .container { max-width:900px; margin:auto; padding:20px; }
+  nav a { color:white; margin-right:15px; text-decoration:none; cursor:pointer; font-size:16px; }
+  .container { max-width:1000px; margin:auto; padding:20px; }
 
   /* 列表頁 */
-  .video-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(250px,1fr)); gap:15px; }
-  .video-item { border:1px solid #ddd; border-radius:8px; padding:10px; cursor:pointer; }
+  .video-list { display:flex; flex-wrap:wrap; gap:15px; }
+  .video-item { border:1px solid #ddd; border-radius:8px; padding:10px; cursor:pointer; width:calc(50% - 15px); box-sizing:border-box; }
   .video-item video { width:100%; border-radius:6px; }
   .video-item h3 { margin:8px 0 0; font-size:18px; }
 
   /* 詳細頁 */
-  .video-container { margin-bottom:20px; }
-  video { width:100%; border-radius:8px; }
-  .text-container { position:relative; overflow:hidden; max-height:4.5em; line-height:1.5em; transition:max-height 0.3s ease; font-size:18px; }
-  .text-container.expanded { max-height:none; }
-  .show-more { color:blue; cursor:pointer; margin-top:5px; display:inline-block; }
+  .detail-container { display:flex; gap:20px; flex-wrap:wrap; }
+  .video-container { flex:1; }
+  .video-container video { width:100%; border-radius:8px; }
+  .text-container { flex:1; font-size:18px; white-space:pre-wrap; word-wrap:break-word; }
 
   /* 管理頁 */
   form input, form textarea { width:100%; margin-bottom:10px; padding:8px; font-size:16px; }
@@ -54,12 +53,12 @@
   <!-- 詳細頁 -->
   <div id="detail-page" style="display:none;">
     <button onclick="showPage('list')">← 回到列表</button>
-    <h2 id="detail-title"></h2>
-    <div class="video-container">
-      <video id="detail-video" controls></video>
+    <div class="detail-container">
+      <div class="video-container">
+        <video id="detail-video" controls></video>
+      </div>
+      <div class="text-container" id="detail-text"></div>
     </div>
-    <div class="text-container" id="detail-text"></div>
-    <span class="show-more" id="toggleText" style="display:none;">顯示更多</span>
   </div>
 
   <!-- 登入頁 -->
@@ -78,7 +77,7 @@
       <input type="hidden" id="editIndex">
       <input type="text" id="title" placeholder="影片標題" required>
       <input type="file" id="fileInput" accept="video/*">
-      <textarea id="text" placeholder="文字內容" rows="4" required></textarea>
+      <textarea id="text" placeholder="文字內容" rows="6" required></textarea>
       <button type="submit">儲存</button>
       <button type="button" onclick="resetForm()">清空</button>
     </form>
@@ -92,7 +91,12 @@
   let videos = JSON.parse(localStorage.getItem("videos") || "[]");
 
   function saveVideos(){
-    localStorage.setItem("videos", JSON.stringify(videos));
+    try {
+      localStorage.setItem("videos", JSON.stringify(videos));
+    } catch(e){
+      alert("影片或資料太大，無法存入localStorage!");
+      return;
+    }
     renderList();
     renderAdminList();
   }
@@ -125,22 +129,8 @@
   // 詳細頁
   function showDetail(index){
     const v = videos[index];
-    document.getElementById("detail-title").innerText=v.title;
-    document.getElementById("detail-video").src=v.url;
-    const textBox=document.getElementById("detail-text");
-    textBox.innerHTML=v.text.replace(/\n/g,"<br>");
-    textBox.classList.remove("expanded");
-    const toggleBtn=document.getElementById("toggleText");
-    if(v.text.split("\n").length>3){
-      toggleBtn.style.display="inline-block";
-      toggleBtn.innerText="顯示更多";
-    }else{
-      toggleBtn.style.display="none";
-    }
-    toggleBtn.onclick=()=>{
-      textBox.classList.toggle("expanded");
-      toggleBtn.innerText=textBox.classList.contains("expanded")?"收起":"顯示更多";
-    };
+    document.getElementById("detail-video").src = v.url;
+    document.getElementById("detail-text").innerText = v.text;
     showPage("detail");
   }
 
@@ -158,6 +148,10 @@
     }
 
     if(file){
+      if(file.size > 10*1024*1024){
+        alert("影片過大，請選擇小於10MB的影片");
+        return;
+      }
       const reader = new FileReader();
       reader.onload = function(evt){
         const url = evt.target.result;
