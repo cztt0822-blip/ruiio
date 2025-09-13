@@ -1,244 +1,257 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>我的影片網站</title>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; font-size: 18px; }
-    header { background: #333; color: white; padding: 10px 20px; }
-    nav a { color: white; margin-right: 15px; text-decoration: none; cursor: pointer; }
-    .container { max-width: 900px; margin: auto; padding: 20px; }
+<meta charset="UTF-8">
+<title>我的影片網站</title>
+<style>
+  body { font-family: Arial, sans-serif; margin:0; padding:0; font-size:18px; }
+  header { background:#333; color:white; padding:10px 20px; }
+  nav a { color:white; margin-right:15px; text-decoration:none; cursor:pointer; }
+  .container { max-width:900px; margin:auto; padding:20px; }
 
-    /* 列表頁 */
-    .video-list { display: flex; flex-direction: column; gap: 20px; }
-    .video-item { display: flex; gap: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; cursor: pointer; }
-    .video-item video { width: 300px; height: 200px; border-radius: 6px; object-fit: cover; }
-    .video-item .text { flex: 1; }
+  /* 列表頁 */
+  .video-list { display:flex; flex-direction:column; gap:20px; }
+  .video-item { display:flex; gap:20px; border:1px solid #ddd; padding:10px; border-radius:8px; cursor:pointer; }
+  .video-item video { width:300px; height:200px; border-radius:6px; object-fit:cover; }
+  .video-item .text { flex:1; }
 
-    /* 詳細頁 */
-    #detail-page { display: none; }
-    #detail-container { display: flex; gap: 20px; }
-    #detail-video { width: 400px; height: 300px; border-radius: 8px; }
-    #detail-text { flex: 1; }
+  /* 詳細頁 */
+  #detail-page { display:none; }
+  #detail-container { display:flex; gap:20px; }
+  #detail-video { width:400px; height:300px; border-radius:8px; }
+  #detail-text { flex:1; }
 
-    /* 管理頁 */
-    #admin-page { display: none; }
-    form input, form textarea { width: 100%; margin-bottom: 10px; padding: 8px; font-size:16px; }
-    form button { padding: 8px 12px; margin-right: 10px; cursor: pointer; }
+  /* 管理頁 */
+  #admin-page { display:none; }
+  form input, form textarea { width:100%; margin-bottom:10px; padding:8px; font-size:16px; }
+  form button { padding:8px 12px; margin-right:10px; cursor:pointer; }
+  .admin-list { margin-top:20px; }
+  .admin-item { border:1px solid #ccc; padding:10px; margin-bottom:10px; }
 
-    .admin-list { margin-top: 20px; }
-    .admin-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+  /* 登入頁 */
+  #login-page { display:none; }
+  #login-page input { width:100%; padding:8px; margin-bottom:10px; font-size:16px; }
+  #login-page button { padding:8px 12px; }
 
-    /* 登入頁 */
-    #login-page { display: none; }
-    #login-page input { width: 100%; padding: 8px; margin-bottom: 10px; font-size:16px; }
-    #login-page button { padding: 8px 12px; }
-  </style>
+  /* 進度條 */
+  #progress-container { width:100%; background:#eee; height:20px; border-radius:10px; margin-bottom:10px; display:none; }
+  #progress-bar { width:0%; height:100%; background:#4caf50; border-radius:10px; text-align:center; color:white; line-height:20px; }
+</style>
 </head>
 <body>
-  <header>
-    <nav>
-      <a onclick="showPage('list')">衣櫃</a>
-      <a onclick="goAdmin()">管理</a>
-    </nav>
-  </header>
+<header>
+  <nav>
+    <a onclick="showPage('list')">衣櫃</a>
+    <a onclick="goAdmin()">管理</a>
+  </nav>
+</header>
 
-  <div class="container">
+<div class="container">
 
-    <!-- 列表頁 -->
-    <div id="list-page">
-      <h2>衣櫃</h2>
-      <div class="video-list" id="videoList"></div>
-    </div>
-
-    <!-- 詳細頁 -->
-    <div id="detail-page">
-      <button onclick="showPage('list')">← 回到列表</button>
-      <h2 id="detail-title"></h2>
-      <div id="detail-container">
-        <video id="detail-video" controls></video>
-        <div id="detail-text"></div>
-      </div>
-    </div>
-
-    <!-- 登入頁 -->
-    <div id="login-page">
-      <h2>登入管理系統</h2>
-      <input type="text" id="loginUser" placeholder="帳號">
-      <input type="password" id="loginPass" placeholder="密碼">
-      <button onclick="login()">登入</button>
-    </div>
-
-    <!-- 管理頁 -->
-    <div id="admin-page">
-      <h2>管理影片</h2>
-      <button onclick="logout()" style="margin-bottom:10px;">登出</button>
-      <form id="videoForm">
-        <input type="hidden" id="editIndex">
-        <input type="text" id="title" placeholder="影片標題" required>
-        <input type="file" id="fileInput" accept="video/*">
-        <textarea id="text" placeholder="文字內容" rows="4" required></textarea>
-        <button type="submit">儲存</button>
-        <button type="button" onclick="resetForm()">清空</button>
-      </form>
-      <div class="admin-list" id="adminList"></div>
-    </div>
-
+  <!-- 列表頁 -->
+  <div id="list-page">
+    <h2>衣櫃</h2>
+    <div class="video-list" id="videoList"></div>
   </div>
 
-  <script>
-    const CLOUD_NAME = "de6hncnwg"; // 替換你的 Cloudinary Cloud Name
-    const UPLOAD_PRESET = "ruiio9"; // 替換你的 Upload Preset
-    let videos = JSON.parse(localStorage.getItem("videos") || "[]");
+  <!-- 詳細頁 -->
+  <div id="detail-page">
+    <button onclick="showPage('list')">← 回到列表</button>
+    <h2 id="detail-title"></h2>
+    <div id="detail-container">
+      <video id="detail-video" controls></video>
+      <div id="detail-text"></div>
+    </div>
+  </div>
 
-    function saveVideos() {
-      localStorage.setItem("videos", JSON.stringify(videos));
-      renderList();
-      renderAdminList();
-    }
+  <!-- 登入頁 -->
+  <div id="login-page">
+    <h2>登入管理系統</h2>
+    <input type="text" id="loginUser" placeholder="帳號">
+    <input type="password" id="loginPass" placeholder="密碼">
+    <button onclick="login()">登入</button>
+  </div>
 
-    function showPage(page) {
-      ["list", "detail", "login", "admin"].forEach(p => {
-        document.getElementById(p + "-page").style.display = "none";
-      });
-      document.getElementById(page + "-page").style.display = "block";
-      if (page === "list") renderList();
-      if (page === "admin") renderAdminList();
-    }
+  <!-- 管理頁 -->
+  <div id="admin-page">
+    <h2>管理影片</h2>
+    <button onclick="logout()" style="margin-bottom:10px;">登出</button>
+    <form id="videoForm">
+      <input type="hidden" id="editIndex">
+      <input type="text" id="title" placeholder="影片標題" required>
+      <input type="file" id="fileInput" accept="video/*">
+      <div id="progress-container"><div id="progress-bar">0%</div></div>
+      <textarea id="text" placeholder="文字內容" rows="4" required></textarea>
+      <button type="submit">儲存</button>
+      <button type="button" onclick="resetForm()">清空</button>
+    </form>
+    <div class="admin-list" id="adminList"></div>
+  </div>
 
-    // 列表頁
-    function renderList() {
-      const list = document.getElementById("videoList");
-      list.innerHTML = "";
-      videos.forEach((v, i) => {
-        const item = document.createElement("div");
-        item.className = "video-item";
-        item.innerHTML = `
-          <video src="${v.url}" muted></video>
-          <div class="text">
-            <h3>${v.title}</h3>
-            <p>${v.text}</p>
-          </div>
-        `;
-        item.onclick = () => showDetail(i);
-        list.appendChild(item);
-      });
-    }
+</div>
 
-    // 詳細頁
-    function showDetail(index) {
-      const v = videos[index];
-      document.getElementById("detail-title").innerText = v.title;
-      document.getElementById("detail-video").src = v.url;
-      document.getElementById("detail-text").innerText = v.text;
-      showPage("detail");
-    }
+<script>
+const CLOUD_NAME = "de6hncnwg"; // Cloudinary Cloud Name
+const UPLOAD_PRESET = "ruiio9"; // Unsigned preset
+let videos = JSON.parse(localStorage.getItem("videos") || "[]");
 
-    // 管理頁
-    document.getElementById("videoForm").addEventListener("submit", async e => {
-      e.preventDefault();
-      const title = document.getElementById("title").value;
-      const text = document.getElementById("text").value;
-      const idx = document.getElementById("editIndex").value;
-      const file = document.getElementById("fileInput").files[0];
+function saveVideos(){
+  localStorage.setItem("videos", JSON.stringify(videos));
+  renderList();
+  renderAdminList();
+}
 
-      if (!file && idx === "") {
-        alert("請選擇影片！");
-        return;
-      }
+function showPage(page){
+  ["list","detail","login","admin"].forEach(p=>document.getElementById(p+"-page").style.display="none");
+  document.getElementById(page+"-page").style.display="block";
+  if(page==="list") renderList();
+  if(page==="admin") renderAdminList();
+}
 
-      if (file) {
-        const url = await uploadVideoToCloudinary(file);
-        saveData(title, url, text, idx);
-      } else {
-        const oldUrl = videos[idx].url;
-        saveData(title, oldUrl, text, idx);
+// 列表頁
+function renderList(){
+  const list = document.getElementById("videoList");
+  list.innerHTML="";
+  videos.forEach((v,i)=>{
+    const item=document.createElement("div");
+    item.className="video-item";
+    item.innerHTML=`
+      <video src="${v.url}" muted></video>
+      <div class="text">
+        <h3>${v.title}</h3>
+        <p>${v.text}</p>
+      </div>
+    `;
+    item.onclick=()=>showDetail(i);
+    list.appendChild(item);
+  });
+}
+
+// 詳細頁
+function showDetail(index){
+  const v=videos[index];
+  document.getElementById("detail-title").innerText=v.title;
+  document.getElementById("detail-video").src=v.url;
+  document.getElementById("detail-text").innerText=v.text;
+  showPage("detail");
+}
+
+// 管理頁
+document.getElementById("videoForm").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const title=document.getElementById("title").value;
+  const text=document.getElementById("text").value;
+  const idx=document.getElementById("editIndex").value;
+  const file=document.getElementById("fileInput").files[0];
+
+  if(!file && idx===""){ alert("請選擇影片！"); return; }
+
+  if(file){
+    const url=await uploadVideoWithProgress(file);
+    saveData(title,url,text,idx);
+  } else {
+    const oldUrl=videos[idx].url;
+    saveData(title,oldUrl,text,idx);
+  }
+});
+
+function saveData(title,url,text,idx){
+  if(idx==="") videos.push({title,url,text});
+  else videos[idx]={title,url,text};
+  saveVideos();
+  resetForm();
+}
+
+function renderAdminList(){
+  const list=document.getElementById("adminList");
+  list.innerHTML="";
+  videos.forEach((v,i)=>{
+    const div=document.createElement("div");
+    div.className="admin-item";
+    div.innerHTML=`
+      <strong>${v.title}</strong><br>
+      <button onclick="editVideo(${i})">編輯</button>
+      <button onclick="deleteVideo(${i})">刪除</button>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function editVideo(index){
+  const v=videos[index];
+  document.getElementById("title").value=v.title;
+  document.getElementById("text").value=v.text;
+  document.getElementById("editIndex").value=index;
+  showPage("admin");
+}
+
+function deleteVideo(index){
+  if(confirm("確定要刪除嗎？")){
+    videos.splice(index,1);
+    saveVideos();
+  }
+}
+
+function resetForm(){
+  document.getElementById("videoForm").reset();
+  document.getElementById("editIndex").value="";
+  document.getElementById("progress-container").style.display="none";
+  document.getElementById("progress-bar").style.width="0%";
+  document.getElementById("progress-bar").innerText="0%";
+}
+
+// 登入功能
+function goAdmin(){
+  if(sessionStorage.getItem("loggedIn")==="true") showPage("admin");
+  else showPage("login");
+}
+
+function login(){
+  const user=document.getElementById("loginUser").value;
+  const pass=document.getElementById("loginPass").value;
+  if(user==="cztt0822" && pass==="0000"){
+    sessionStorage.setItem("loggedIn","true");
+    showPage("admin");
+  } else { alert("帳號或密碼錯誤"); }
+}
+
+function logout(){
+  sessionStorage.removeItem("loggedIn");
+  showPage("list");
+}
+
+// Cloudinary 上傳 + 進度條
+function uploadVideoWithProgress(file){
+  return new Promise((resolve,reject)=>{
+    const url=`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`;
+    const xhr=new XMLHttpRequest();
+    const formData=new FormData();
+    formData.append("file",file);
+    formData.append("upload_preset",UPLOAD_PRESET);
+
+    xhr.open("POST",url);
+    xhr.upload.addEventListener("progress",e=>{
+      if(e.lengthComputable){
+        const percent=Math.round((e.loaded/e.total)*100);
+        document.getElementById("progress-container").style.display="block";
+        document.getElementById("progress-bar").style.width=percent+"%";
+        document.getElementById("progress-bar").innerText=percent+"%";
       }
     });
 
-    async function uploadVideoToCloudinary(file) {
-      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`;
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", UPLOAD_PRESET);
+    xhr.onload=()=> {
+      if(xhr.status===200){
+        const data=JSON.parse(xhr.responseText);
+        resolve(data.secure_url);
+      } else reject(xhr.responseText);
+    };
+    xhr.onerror=()=> reject("上傳失敗");
+    xhr.send(formData);
+  });
+}
 
-      const response = await fetch(url, { method: "POST", body: formData });
-      const data = await response.json();
-      return data.secure_url;
-    }
-
-    function saveData(title, url, text, idx) {
-      if (idx === "") {
-        videos.push({ title, url, text });
-      } else {
-        videos[idx] = { title, url, text };
-      }
-      saveVideos();
-      resetForm();
-    }
-
-    function renderAdminList() {
-      const list = document.getElementById("adminList");
-      list.innerHTML = "";
-      videos.forEach((v, i) => {
-        const div = document.createElement("div");
-        div.className = "admin-item";
-        div.innerHTML = `
-          <strong>${v.title}</strong><br>
-          <button onclick="editVideo(${i})">編輯</button>
-          <button onclick="deleteVideo(${i})">刪除</button>
-        `;
-        list.appendChild(div);
-      });
-    }
-
-    function editVideo(index) {
-      const v = videos[index];
-      document.getElementById("title").value = v.title;
-      document.getElementById("text").value = v.text;
-      document.getElementById("editIndex").value = index;
-      showPage("admin");
-    }
-
-    function deleteVideo(index) {
-      if (confirm("確定要刪除嗎？")) {
-        videos.splice(index, 1);
-        saveVideos();
-      }
-    }
-
-    function resetForm() {
-      document.getElementById("videoForm").reset();
-      document.getElementById("editIndex").value = "";
-    }
-
-    // 登入功能
-    function goAdmin() {
-      if (sessionStorage.getItem("loggedIn") === "true") {
-        showPage("admin");
-      } else {
-        showPage("login");
-      }
-    }
-
-    function login() {
-      const user = document.getElementById("loginUser").value;
-      const pass = document.getElementById("loginPass").value;
-      if (user === "cztt0822" && pass === "0000") {
-        sessionStorage.setItem("loggedIn", "true");
-        showPage("admin");
-      } else {
-        alert("帳號或密碼錯誤");
-      }
-    }
-
-    function logout() {
-      sessionStorage.removeItem("loggedIn");
-      showPage("list");
-    }
-
-    // 初始化
-    showPage("list");
-  </script>
+// 預設顯示列表
+showPage("list");
+</script>
 </body>
 </html>
