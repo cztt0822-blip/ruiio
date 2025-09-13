@@ -28,6 +28,11 @@
   .admin-list { margin-top:20px; }
   .admin-item { border:1px solid #ccc; padding:10px; margin-bottom:10px; font-size:16px; }
 
+  /* 上傳進度條 */
+  #uploadStatus { display:none; margin-bottom:10px; }
+  #uploadStatus div { background:#ddd; width:100%; border-radius:5px; overflow:hidden; }
+  #progressBar { width:0%; height:20px; background:green; }
+
   /* 登入頁 */
   #login-page { display:none; }
   #login-page input { width:100%; padding:8px; margin-bottom:10px; font-size:16px; }
@@ -77,6 +82,13 @@
   <div id="admin-page" style="display:none;">
     <h2>管理影片</h2>
     <button onclick="logout()" style="margin-bottom:10px;">登出</button>
+    
+    <!-- 上傳進度條 -->
+    <div id="uploadStatus">
+      <div><div id="progressBar"></div></div>
+      <span id="progressText"></span>
+    </div>
+    
     <form id="videoForm">
       <input type="hidden" id="editIndex">
       <input type="text" id="title" placeholder="影片標題" required>
@@ -175,12 +187,27 @@
       const storageRef = storage.ref('videos/'+file.name);
       const uploadTask = storageRef.put(file);
 
+      // 顯示進度條
+      document.getElementById("uploadStatus").style.display="block";
+      const progressBar = document.getElementById("progressBar");
+      const progressText = document.getElementById("progressText");
+
       uploadTask.on('state_changed',
-        snapshot => {}, // 可顯示上傳進度
-        error => { alert("上傳失敗:"+error); },
+        snapshot => {
+          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+          progressBar.style.width = progress + "%";
+          progressText.innerText = "上傳進度: " + Math.floor(progress) + "%";
+        },
+        error => { 
+          alert("上傳失敗:"+error); 
+          document.getElementById("uploadStatus").style.display="none";
+        },
         () => {
           uploadTask.snapshot.ref.getDownloadURL().then(url=>{
             saveData(title,url,text,idx);
+            progressBar.style.width="100%";
+            progressText.innerText="上傳完成！";
+            setTimeout(()=>{ document.getElementById("uploadStatus").style.display="none"; },1500);
           });
         }
       );
