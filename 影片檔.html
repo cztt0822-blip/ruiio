@@ -1,260 +1,244 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-<meta charset="UTF-8">
-<title>影片網站 Firebase 進階上傳版</title>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-<style>
-body { font-family: Arial; margin:0; padding:0; }
-header { background:#333; color:white; padding:10px 20px; }
-nav a { color:white; margin-right:15px; text-decoration:none; cursor:pointer; font-size:16px; }
-.container { max-width:1000px; margin:auto; padding:20px; }
-.video-list { display:flex; flex-wrap:wrap; gap:15px; }
-.video-item { border:1px solid #ddd; border-radius:8px; padding:10px; cursor:pointer; width:calc(50% - 15px); box-sizing:border-box; }
-.video-item video { width:100%; border-radius:6px; }
-.video-item h3 { margin:8px 0 0; font-size:18px; }
-.detail-container { display:flex; gap:20px; flex-wrap:wrap; margin-top:20px; }
-.video-container { flex:1; }
-.video-container video { width:100%; border-radius:8px; }
-.text-container { flex:1; font-size:18px; white-space:pre-wrap; word-wrap:break-word; }
-form input, form textarea { width:100%; margin-bottom:10px; padding:8px; font-size:16px; }
-form button { padding:8px 12px; margin-right:10px; cursor:pointer; font-size:16px; }
-.admin-list { margin-top:20px; }
-.admin-item { border:1px solid #ccc; padding:10px; margin-bottom:10px; font-size:16px; }
-#login-page { display:none; }
-#login-page input { width:100%; padding:8px; margin-bottom:10px; font-size:16px; }
-#login-page button { padding:8px 12px; font-size:16px; }
-#uploadProgress { width:100%; height:20px; display:none; margin-bottom:10px; }
-</style>
+  <meta charset="UTF-8">
+  <title>我的影片網站</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; font-size: 18px; }
+    header { background: #333; color: white; padding: 10px 20px; }
+    nav a { color: white; margin-right: 15px; text-decoration: none; cursor: pointer; }
+    .container { max-width: 900px; margin: auto; padding: 20px; }
+
+    /* 列表頁 */
+    .video-list { display: flex; flex-direction: column; gap: 20px; }
+    .video-item { display: flex; gap: 20px; border: 1px solid #ddd; padding: 10px; border-radius: 8px; cursor: pointer; }
+    .video-item video { width: 300px; height: 200px; border-radius: 6px; object-fit: cover; }
+    .video-item .text { flex: 1; }
+
+    /* 詳細頁 */
+    #detail-page { display: none; }
+    #detail-container { display: flex; gap: 20px; }
+    #detail-video { width: 400px; height: 300px; border-radius: 8px; }
+    #detail-text { flex: 1; }
+
+    /* 管理頁 */
+    #admin-page { display: none; }
+    form input, form textarea { width: 100%; margin-bottom: 10px; padding: 8px; font-size:16px; }
+    form button { padding: 8px 12px; margin-right: 10px; cursor: pointer; }
+
+    .admin-list { margin-top: 20px; }
+    .admin-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+
+    /* 登入頁 */
+    #login-page { display: none; }
+    #login-page input { width: 100%; padding: 8px; margin-bottom: 10px; font-size:16px; }
+    #login-page button { padding: 8px 12px; }
+  </style>
 </head>
 <body>
+  <header>
+    <nav>
+      <a onclick="showPage('list')">衣櫃</a>
+      <a onclick="goAdmin()">管理</a>
+    </nav>
+  </header>
 
-<header>
-<nav>
-<a onclick="showPage('list')">衣櫃</a>
-<a onclick="goAdmin()">管理</a>
-</nav>
-</header>
+  <div class="container">
 
-<div class="container">
+    <!-- 列表頁 -->
+    <div id="list-page">
+      <h2>衣櫃</h2>
+      <div class="video-list" id="videoList"></div>
+    </div>
 
-<!-- 列表頁 -->
-<div id="list-page">
-<h2>衣櫃</h2>
-<div class="video-list" id="videoList"></div>
-</div>
+    <!-- 詳細頁 -->
+    <div id="detail-page">
+      <button onclick="showPage('list')">← 回到列表</button>
+      <h2 id="detail-title"></h2>
+      <div id="detail-container">
+        <video id="detail-video" controls></video>
+        <div id="detail-text"></div>
+      </div>
+    </div>
 
-<!-- 詳細頁 -->
-<div id="detail-page" style="display:none;">
-<button onclick="showPage('list')">← 回到列表</button>
-<div class="detail-container">
-<div class="video-container">
-<video id="detail-video" controls></video>
-</div>
-<div class="text-container" id="detail-text"></div>
-</div>
-</div>
+    <!-- 登入頁 -->
+    <div id="login-page">
+      <h2>登入管理系統</h2>
+      <input type="text" id="loginUser" placeholder="帳號">
+      <input type="password" id="loginPass" placeholder="密碼">
+      <button onclick="login()">登入</button>
+    </div>
 
-<!-- 登入頁 -->
-<div id="login-page">
-<h2>登入管理系統</h2>
-<input type="text" id="loginUser" placeholder="帳號">
-<input type="password" id="loginPass" placeholder="密碼">
-<button onclick="login()">登入</button>
-</div>
+    <!-- 管理頁 -->
+    <div id="admin-page">
+      <h2>管理影片</h2>
+      <button onclick="logout()" style="margin-bottom:10px;">登出</button>
+      <form id="videoForm">
+        <input type="hidden" id="editIndex">
+        <input type="text" id="title" placeholder="影片標題" required>
+        <input type="file" id="fileInput" accept="video/*">
+        <textarea id="text" placeholder="文字內容" rows="4" required></textarea>
+        <button type="submit">儲存</button>
+        <button type="button" onclick="resetForm()">清空</button>
+      </form>
+      <div class="admin-list" id="adminList"></div>
+    </div>
 
-<!-- 管理頁 -->
-<div id="admin-page" style="display:none;">
-<h2>管理影片</h2>
-<button onclick="logout()" style="margin-bottom:10px;">登出</button>
-<form id="videoForm">
-<input type="hidden" id="editIndex">
-<input type="text" id="title" placeholder="影片標題" required>
-<input type="file" id="fileUpload" accept="video/*" capture="environment">
-<progress id="uploadProgress" value="0" max="100"></progress>
-<textarea id="text" placeholder="文字內容" rows="6" required></textarea>
-<button type="submit">儲存</button>
-<button type="button" onclick="resetForm()">清空</button>
-</form>
-<div class="admin-list" id="adminList"></div>
-</div>
+  </div>
 
-</div>
+  <script>
+    const CLOUD_NAME = "YOUR_CLOUD_NAME"; // 替換你的 Cloudinary Cloud Name
+    const UPLOAD_PRESET = "YOUR_UPLOAD_PRESET"; // 替換你的 Upload Preset
+    let videos = JSON.parse(localStorage.getItem("videos") || "[]");
 
-<script>
-// ====== Firebase 初始化 ======
-const firebaseConfig = {
-  apiKey: "你的APIKey",
-  authDomain: "你的專案.firebaseapp.com",
-  projectId: "你的專案ID",
-  storageBucket: "你的專案.appspot.com",
-  messagingSenderId: "你的SenderID",
-  appId: "你的AppID"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-const storage = firebase.storage();
+    function saveVideos() {
+      localStorage.setItem("videos", JSON.stringify(videos));
+      renderList();
+      renderAdminList();
+    }
 
-// ====== 全域變數 ======
-let videos = [];
+    function showPage(page) {
+      ["list", "detail", "login", "admin"].forEach(p => {
+        document.getElementById(p + "-page").style.display = "none";
+      });
+      document.getElementById(page + "-page").style.display = "block";
+      if (page === "list") renderList();
+      if (page === "admin") renderAdminList();
+    }
 
-// ====== 顯示頁面 ======
-function showPage(page){
-["list","detail","login","admin"].forEach(p=>{
-document.getElementById(p+"-page").style.display="none";
-});
-document.getElementById(page+"-page").style.display="block";
-if(page==="list") loadVideos();
-if(page==="admin") loadVideos(true);
-}
+    // 列表頁
+    function renderList() {
+      const list = document.getElementById("videoList");
+      list.innerHTML = "";
+      videos.forEach((v, i) => {
+        const item = document.createElement("div");
+        item.className = "video-item";
+        item.innerHTML = `
+          <video src="${v.url}" muted></video>
+          <div class="text">
+            <h3>${v.title}</h3>
+            <p>${v.text}</p>
+          </div>
+        `;
+        item.onclick = () => showDetail(i);
+        list.appendChild(item);
+      });
+    }
 
-// ====== 讀取影片列表 ======
-async function loadVideos(admin=false){
-const snapshot = await db.collection("videos").orderBy("timestamp","desc").get();
-videos = snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
-renderList();
-if(admin) renderAdminList();
-}
+    // 詳細頁
+    function showDetail(index) {
+      const v = videos[index];
+      document.getElementById("detail-title").innerText = v.title;
+      document.getElementById("detail-video").src = v.url;
+      document.getElementById("detail-text").innerText = v.text;
+      showPage("detail");
+    }
 
-// ====== 列表頁 ======
-function renderList(){
-const list=document.getElementById("videoList");
-list.innerHTML="";
-videos.forEach((v,i)=>{
-const item=document.createElement("div");
-item.className="video-item";
-item.innerHTML=`
-<video src="${v.url}" muted></video>
-<h3>${v.title}</h3>
-`;
-item.onclick=()=>showDetail(i);
-list.appendChild(item);
-});
-}
+    // 管理頁
+    document.getElementById("videoForm").addEventListener("submit", async e => {
+      e.preventDefault();
+      const title = document.getElementById("title").value;
+      const text = document.getElementById("text").value;
+      const idx = document.getElementById("editIndex").value;
+      const file = document.getElementById("fileInput").files[0];
 
-// ====== 詳細頁 ======
-function showDetail(index){
-const v=videos[index];
-document.getElementById("detail-video").src=v.url;
-document.getElementById("detail-text").innerText=v.text;
-showPage("detail");
-}
+      if (!file && idx === "") {
+        alert("請選擇影片！");
+        return;
+      }
 
-// ====== 管理頁功能 ======
-document.getElementById("videoForm").addEventListener("submit", async e=>{
-e.preventDefault();
-const title = document.getElementById("title").value;
-const text = document.getElementById("text").value;
-const idx = document.getElementById("editIndex").value;
-const file = document.getElementById("fileUpload").files[0];
-const progress = document.getElementById("uploadProgress");
+      if (file) {
+        const url = await uploadVideoToCloudinary(file);
+        saveData(title, url, text, idx);
+      } else {
+        const oldUrl = videos[idx].url;
+        saveData(title, oldUrl, text, idx);
+      }
+    });
 
-if(!file && idx===""){
-alert("請選影片");
-return;
-}
+    async function uploadVideoToCloudinary(file) {
+      const url = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
 
-let url="";
-if(file){
-const storageRef = storage.ref().child("videos/"+Date.now()+"_"+file.name);
-const uploadTask = storageRef.put(file);
+      const response = await fetch(url, { method: "POST", body: formData });
+      const data = await response.json();
+      return data.secure_url;
+    }
 
-progress.style.display="block";
+    function saveData(title, url, text, idx) {
+      if (idx === "") {
+        videos.push({ title, url, text });
+      } else {
+        videos[idx] = { title, url, text };
+      }
+      saveVideos();
+      resetForm();
+    }
 
-uploadTask.on('state_changed',
-(snapshot)=>{
-const percent = (snapshot.bytesTransferred/snapshot.totalBytes)*100;
-progress.value = percent;
-},
-(error)=>{
-alert("上傳失敗: "+error.message);
-},
-async ()=>{
-url = await uploadTask.snapshot.ref.getDownloadURL();
-await saveVideoFirestore(title,text,url,idx);
-progress.style.display="none";
-resetForm();
-loadVideos(true);
-}
-);
-}else{
-url = videos[idx].url;
-await saveVideoFirestore(title,text,url,idx);
-resetForm();
-loadVideos(true);
-}
-});
+    function renderAdminList() {
+      const list = document.getElementById("adminList");
+      list.innerHTML = "";
+      videos.forEach((v, i) => {
+        const div = document.createElement("div");
+        div.className = "admin-item";
+        div.innerHTML = `
+          <strong>${v.title}</strong><br>
+          <button onclick="editVideo(${i})">編輯</button>
+          <button onclick="deleteVideo(${i})">刪除</button>
+        `;
+        list.appendChild(div);
+      });
+    }
 
-async function saveVideoFirestore(title,text,url,idx){
-if(idx===""){
-await db.collection("videos").add({title,text,url,timestamp:Date.now()});
-}else{
-await db.collection("videos").doc(videos[idx].id).update({title,text,url});
-}
-}
+    function editVideo(index) {
+      const v = videos[index];
+      document.getElementById("title").value = v.title;
+      document.getElementById("text").value = v.text;
+      document.getElementById("editIndex").value = index;
+      showPage("admin");
+    }
 
-// ====== 管理列表 ======
-function renderAdminList(){
-const list=document.getElementById("adminList");
-list.innerHTML="";
-videos.forEach((v,i)=>{
-const div=document.createElement("div");
-div.className="admin-item";
-div.innerHTML=`
-<strong>${v.title}</strong><br>
-<button onclick="editVideo(${i})">編輯</button>
-<button onclick="deleteVideo(${i})">刪除</button>
-`;
-list.appendChild(div);
-});
-}
+    function deleteVideo(index) {
+      if (confirm("確定要刪除嗎？")) {
+        videos.splice(index, 1);
+        saveVideos();
+      }
+    }
 
-function editVideo(index){
-const v=videos[index];
-document.getElementById("title").value=v.title;
-document.getElementById("text").value=v.text;
-document.getElementById("editIndex").value=index;
-showPage("admin");
-}
+    function resetForm() {
+      document.getElementById("videoForm").reset();
+      document.getElementById("editIndex").value = "";
+    }
 
-async function deleteVideo(index){
-if(confirm("確定要刪除嗎？")){
-await db.collection("videos").doc(videos[index].id).delete();
-loadVideos(true);
-}
-}
+    // 登入功能
+    function goAdmin() {
+      if (sessionStorage.getItem("loggedIn") === "true") {
+        showPage("admin");
+      } else {
+        showPage("login");
+      }
+    }
 
-function resetForm(){
-document.getElementById("videoForm").reset();
-document.getElementById("editIndex").value="";
-document.getElementById("uploadProgress").style.display="none";
-}
+    function login() {
+      const user = document.getElementById("loginUser").value;
+      const pass = document.getElementById("loginPass").value;
+      if (user === "cztt0822" && pass === "0000") {
+        sessionStorage.setItem("loggedIn", "true");
+        showPage("admin");
+      } else {
+        alert("帳號或密碼錯誤");
+      }
+    }
 
-// ====== 登入登出 ======
-function goAdmin(){
-if(sessionStorage.getItem("loggedIn")==="true") showPage("admin");
-else showPage("login");
-}
+    function logout() {
+      sessionStorage.removeItem("loggedIn");
+      showPage("list");
+    }
 
-function login(){
-const user=document.getElementById("loginUser").value;
-const pass=document.getElementById("loginPass").value;
-if(user==="cztt0822" && pass==="0000"){
-sessionStorage.setItem("loggedIn","true");
-showPage("admin");
-}else{ alert("帳號或密碼錯誤"); }
-}
-
-function logout(){
-sessionStorage.removeItem("loggedIn");
-showPage("list");
-}
-
-// ====== 初始化 ======
-showPage("list");
-</script>
-
+    // 初始化
+    showPage("list");
+  </script>
 </body>
 </html>
